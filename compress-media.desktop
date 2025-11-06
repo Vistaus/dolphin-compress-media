@@ -1,0 +1,25 @@
+[Desktop Entry]
+Type=Service
+MimeType=image/*;video/*;
+Actions=compress-to-10;compress-to-4;compress-to-2;compress-to-custom
+X-KDE-Submenu=Compress to...
+
+[Desktop Action compress-to-10]
+Name=10mb
+Icon=insert-image
+Exec=resize -s 10 %f
+
+[Desktop Action compress-to-4]
+Name=4mb
+Icon=insert-image
+Exec=resize -s 4 %f
+
+[Desktop Action compress-to-2]
+Name=2mb
+Icon=insert-image
+Exec=resize -s 2 %f
+
+[Desktop Action compress-to-custom]
+Name=Custom...
+Icon=insert-image
+Exec=resize -s "$(kdialog --title "Compress Media" --icon "insert-image" --inputbox "Input target size for the file in mb")" %f

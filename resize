@@ -1,0 +1,50 @@
+#!/usr/bin/env bash
+
+usage() {
+    cat << EOF
+-s <size> | --size <size> - sets target size of output file in mb
+-h        | --help        - this message
+Everything else considered to be a file path
+EOF
+}
+
+if [ -z "$1" ]; then
+  usage
+  exit
+fi
+ARGS=$(getopt -a -n resize -o s:h --long size,help -- "$@")
+eval set -- "$ARGS"
+while true; do
+    case $1 in
+        -s | --size) target_size_mb=$2  ; shift 2;;
+        -h | --help) usage              ; exit;;
+        --) shift; break;;
+    esac
+done
+
+target_size_mb="${target_size_mb:-10}" # target size in MB
+for file in "$@"; do
+    mime=$(file -b --mime-type "$file")
+    ext="${file##*.}"
+    if [[ "$mime" == video/* ]]; then
+        target_size=$(( target_size_mb * 1000 * 1000 * 8 )) # target size in bits
+        length=$(ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "$file")
+        length_round_up=$(( ${length%.*} + 1 ))
+        total_bitrate=$(( target_size / length_round_up ))
+        audio_bitrate=$(( 128 * 1000 )) # 128k bit rate
+        video_bitrate=$(( total_bitrate - audio_bitrate ))
+        ffmpeg -hwaccel auto -i "$file" \
+            -vf scale=-1:720 \
+            -b:v $video_bitrate \
+            -maxrate:v $video_bitrate \
+            -bufsize:v $(( target_size / 20 )) \
+            -b:a $audio_bitrate \
+            "${file%."${ext}"}-${target_size_mb}mb.${ext}"
+    elif [[ "$mime" == image/* ]]; then
+        magick "$file" \
+            -define "${ext}:extent=${target_size_mb}" \
+            "${file%."${ext}"}-${target_size_mb}mb.${ext}"
+    else
+        kdialog --title "Compress Media" --error "Unsupported file type"
+    fi
+done
