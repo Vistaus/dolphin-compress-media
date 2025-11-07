@@ -27,6 +27,21 @@ for file in "$@"; do
     mime=$(file -b --mime-type "$file")
     ext="${file##*.}"
     if [[ "$mime" == video/* ]]; then
+        size=$(( $(stat -c %s "$file") / 1024 / 1024 )) # file size in MB
+        if (( size > target_size_mb * 8 )); then
+            kdialog \
+                --title "Compress Media: File is too big!" \
+                --error "
+«$(basename "$file")» is too big (${size}MB) for the target size of ${target_size_mb}MB.
+Input file must not be more than 8 times bigger than target size."
+            exit 1
+        fi
+        if [ -f "${file%."${ext}"}-${target_size_mb}mb.${ext}" ]; then
+            kdialog \
+                --title "Compress Media" \
+                --msgbox "Output file already exists"
+            exit 1
+        fi
         target_size=$(( target_size_mb * 1024 * 1024 * 8 )) # target size in bits
         length=$(ffprobe -v error -show_entries format=duration -of default=noprint_wrappers=1:nokey=1 "$file")
         length=$(( ${length%.*} + 1 ))
